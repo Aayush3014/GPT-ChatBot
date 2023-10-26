@@ -3,6 +3,7 @@
         "ayush",
         "chatgptdb",
         "csrfmiddlewaretoken",
+        "openai",
         "psycopg",
         "wsmy"
     ]
