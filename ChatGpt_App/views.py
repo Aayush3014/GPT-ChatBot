@@ -3,42 +3,61 @@ from django.http import JsonResponse
 import openai
 from django.contrib import auth
 from django.contrib.auth.models import User
+
+from .models import Chat
+
+from django.utils import timezone
 # Create your views here.
 
 
-openai_api_key = 'Your_API_Key'
+openai_api_key = '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'
 
 openai.api_key = openai_api_key
 
 
 def ask_response(message):
-    response = openai.Completion.create(
-        model = "text-davinci-003",
-        prompt = message,
-        max_tokens = 100,
-        n = 1,
-        stop = None,
-        temperature = 0.7,
+    response = openai.ChatCompletion.create(
+        model = "gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are an helpful assistant."},
+            {"role": "user", "content": message},
+        ]
     )
-
     
-    answer = response.choices[0].text.strip()
+    answer = response.choices[0].message.content.strip()
     return answer
 
 
 
-def chatbot(request):
-
+def chatbot(request):   
+    chats = Chat.objects.filter(user=request.user)
     if request.method == "POST":
         message = request.POST.get('message')
         response = ask_response(message)
+
+        chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
+        chat.save()
+
         return JsonResponse({"message": message, "response": response})
-    return render(request, "chatbot.html")
+    return render(request, "chatbot.html",{'chats':chats})
 
     
 
 
 def login(request):
+    if request.method == "POST":
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+
+        user = auth.authenticate(username=username, password=password)
+
+        if user is not None:
+            auth.login(request, user)
+            return redirect("chatbot")
+        else:
+            error_message = "Invalid Credentials"
+            return render(request, "login.html", {"error": error_message})
     return render(request, "login.html")
 
 
@@ -69,3 +88,4 @@ def register(request):
 
 def logout(request):
     auth.logout(request)
+    return redirect("login")
